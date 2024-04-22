@@ -1,5 +1,4 @@
 ﻿using AuthServer.Api.Contextes;
-using AuthServer.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,13 +21,13 @@ namespace AuthServer.Api.Controllers
             var result = await _context.Tours
                 .Where(x => x.Discount > 5)
                 .ToListAsync();
-    
+
             return Ok(result);
-               
+
         }
 
         [HttpGet("GetAllTours")]
-
+        
         public async Task<IActionResult> GetAllTours()
         {
             var result = await _context.Tours
@@ -85,7 +84,7 @@ namespace AuthServer.Api.Controllers
             {
                 query = query.Where(ad => ad.ArrivalDate <= parameters.ArrivalDate);
             }
-            
+
 
             var result = await query
                  .Select(t => new
@@ -125,7 +124,7 @@ namespace AuthServer.Api.Controllers
         }
 
         [HttpPost("FindByPrice")]
-        public async Task<IActionResult> SortedByPrice([FromBody]double? lowRange, double? heightRange)
+        public async Task<IActionResult> SortedByPrice([FromBody] double? lowRange, double? heightRange)
         {
             var query = _context.Tours.AsQueryable();
 
@@ -162,19 +161,19 @@ namespace AuthServer.Api.Controllers
 
         public async Task<IActionResult> SortingByRating([FromBody] string ratingString)
         {
-            
+
             ratingString = ratingString.Replace(',', '.');
 
-            
+
             if (!double.TryParse(ratingString, NumberStyles.Any, CultureInfo.InvariantCulture, out double rating))
             {
-                
+
                 return BadRequest("Invalid rating format");
             }
 
             var result = await _context.Tours
-                .Where(x => x.Star >= rating) 
-                .OrderByDescending(x => x.Star) 
+                .Where(x => x.Star >= rating)
+                .OrderByDescending(x => x.Star)
                 .ToListAsync();
 
             return Ok(result);
@@ -182,133 +181,39 @@ namespace AuthServer.Api.Controllers
 
         public record BookingRequest(int TourId, int Persons);
         [HttpPatch("BookTour")]
+        [Authorize]
         public async Task<IActionResult> BookATour([FromBody] BookingRequest bookingRequest)
         {
-          
+
             var tour = await _context.Tours.FindAsync(bookingRequest.TourId);
 
             if (tour == null)
             {
                 return NotFound("Тур не найден");
             }
-                     
+
             if (bookingRequest.Persons > tour.AvailableSeats)
             {
                 return BadRequest("Введенное количество персон превышает количество свободных мест");
             }
-           
-            double totalPrice = tour.Price * bookingRequest.Persons - ((tour.Price*tour.Discount)/100);
+
+            double totalPrice = tour.Price * bookingRequest.Persons - ((tour.Price * tour.Discount) / 100);
             tour.AvailableSeats -= bookingRequest.Persons;
 
             _context.Update(tour);
             await _context.SaveChangesAsync();
 
-          
+
             return Ok($"Тур успешно забронирован для {bookingRequest.Persons} человек. Итоговая стоимость: {totalPrice}");
         }
 
-        public record FindWithAllParameters
-        (
-            string? Country,
-            int? Passengers,
-            DateOnly? DepartureDate,
-            DateOnly? ArrivalDate,
-            double? TourRating,
-            double? TourPrice,
-            string? HotelCity,
-            string? HotelType,
-            string? HotelRating,
-            bool? AllowChild,
-            bool? FreeWifi,
-            string? TypeOfNutrition
+ 
 
-        );
+       
 
-        [HttpPost("SearchWithAllParameters")]
-        public async Task<IActionResult> SearchWithAllParameters([FromBody] FindWithAllParameters parameters)
-        {
-            var query = from tour in _context.Tours
-                        join hotel in _context.Hotels on tour.Hotel.Id equals hotel.Id
-                        select new
-                        {
-                            Tour = tour,
-                            Hotel = hotel
-                        };
+       
 
-            if (parameters.Country != null)
-            {
-                query = query.Where(x => x.Tour.Country == parameters.Country);
-            }
-            if (parameters.Passengers.HasValue)
-            {
-                query = query.Where(x => x.Tour.AvailableSeats >= parameters.Passengers.Value);
-            }
-            if (parameters.DepartureDate.HasValue)
-            {
-                query = query.Where(x => x.Tour.DepartureDate >= parameters.DepartureDate.Value);
-            }
-            if (parameters.ArrivalDate.HasValue)
-            {
-                query = query.Where(x => x.Tour.ArrivalDate <= parameters.ArrivalDate.Value);
-            }
-            if (parameters.TourRating.HasValue)
-            {
-                query = query.Where(x => x.Tour.Star >= parameters.TourRating.Value);
-            }
-            if (parameters.TourPrice.HasValue)
-            {
-                query = query.Where(x => x.Tour.Price <= parameters.TourPrice.Value);
-            }
-            if (parameters.HotelCity != null)
-            {
-                query = query.Where(x => x.Hotel.City == parameters.HotelCity);
-            }
-            if (parameters.HotelType != null)
-            {
-                query = query.Where(x => x.Hotel.Type == parameters.HotelType);
-            }
-            if (parameters.HotelRating != null)
-            {
-                query = query.Where(x => x.Hotel.Star.ToString() == parameters.HotelRating);
-            }
-            if (parameters.AllowChild.HasValue)
-            {
-                query = query.Where(x => x.Hotel.AllowChild == parameters.AllowChild.Value);
-            }
-            if (parameters.FreeWifi.HasValue)
-            {
-                query = query.Where(x => x.Hotel.FreeWifi == parameters.FreeWifi.Value);
-            }
-            if (parameters.TypeOfNutrition != null)
-            {
-                query = query.Where(x => x.Hotel.TypeOfNutrition == parameters.TypeOfNutrition);
-            }
 
-            query = query.OrderBy(x => x.Tour.Country)
-                         .ThenBy(x => x.Tour.AvailableSeats)
-                         .ThenBy(x => x.Tour.DepartureDate);
-
-            var result = await query.Select(t => new
-            {
-                Id = t.Tour.Id,
-                Name = t.Tour,
-                Description = t.Tour.Description,
-                Country = t.Tour.Country,
-                DepartureDate = t.Tour.DepartureDate,
-                ArrivalDate = t.Tour.ArrivalDate,
-                Star = t.Tour.Star,
-                Price = t.Tour.Price,
-                AvailableSeats = t.Tour.AvailableSeats,
-                Discount = t.Tour.Discount,
-                Images = t.Tour.Images.Path,
-                HotelId = t.Hotel.Id,
-                HottelName = t.Hotel.Name
-            })
-               .ToListAsync(); 
-            return Ok(result);
-        }
-        
-      
 
 
 
