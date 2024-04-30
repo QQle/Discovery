@@ -5,7 +5,8 @@ namespace AuthServer.Api.Models
     public class ExtendedIdentityUser : IdentityUser
     {
         public string? RefreshToken { get; set; }
-        public DateTime RefreshTokenExpiry { get; set; }
-        public string? Tour { get; set; }
+        public DateTime? RefreshTokenExpiry { get; set; }
+        public List<int> BookedTours { get; set; } = new List<int>();
+
     }
 }

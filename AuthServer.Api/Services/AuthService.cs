@@ -1,5 +1,7 @@
 ﻿using AuthServer.Api.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,12 +21,12 @@ namespace AuthServer.Api.Services
             _config = config;
         }
 
-        public async Task<bool> RegisterUser(LoginUser user)
+        public async Task<bool> Registration(RegistrationUser user)
         {
             var identityUser = new ExtendedIdentityUser
             {
                 UserName = user.UserName,
-                Email = user.UserName
+                Email = user.UserEmail 
             };
 
             var result = await _userManager.CreateAsync(identityUser, user.Password);
@@ -34,15 +36,15 @@ namespace AuthServer.Api.Services
         public async Task<LoginResponse> Login(LoginUser user)
         {
             var response = new LoginResponse();
-            var identityUser = await _userManager.FindByEmailAsync(user.UserName);
+            var identityUser = await _userManager.FindByNameAsync(user.UserName);
 
             if (identityUser is null || (await _userManager.CheckPasswordAsync(identityUser, user.Password)) == false)
             {
                 return response;
             }
 
-            response.IsLogedIn = true;
-            response.JwtToken = this.GenerateTokenString(identityUser.Email);
+            response.IsLoggedIn = true;
+            response.JwtToken = this.GenerateTokenString(identityUser.UserName);
             response.RefreshToken = this.GenerateRefreshTokenString();
 
             identityUser.RefreshToken = response.RefreshToken;
@@ -65,7 +67,7 @@ namespace AuthServer.Api.Services
             if (identityUser is null || identityUser.RefreshToken != model.RefreshToken || identityUser.RefreshTokenExpiry < DateTime.Now)
                 return response;
 
-            response.IsLogedIn = true;
+            response.IsLoggedIn = true;
             response.JwtToken = this.GenerateTokenString(identityUser.Email);
             response.RefreshToken = this.GenerateRefreshTokenString();
 
@@ -125,5 +127,7 @@ namespace AuthServer.Api.Services
             string tokenString = new JwtSecurityTokenHandler().WriteToken(securityToken);
             return tokenString;
         }
+
+       
     }
 }

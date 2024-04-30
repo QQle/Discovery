@@ -1,11 +1,11 @@
 using AuthServer.Api.Contextes;
+using AuthServer.Api.Controllers;
 using AuthServer.Api.Models;
 using AuthServer.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace AuthServer.Api
@@ -16,8 +16,8 @@ namespace AuthServer.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.      
-            builder.Services.AddDbContext<AuthDemoDbContext>(options =>
+            
+            builder.Services.AddDbContext<UserDbContext>(options =>
             {
                 options.UseSqlServer(builder.Configuration.GetSection("ConnectionStrings:DiscoveryUsers").Value);
             });
@@ -25,7 +25,7 @@ namespace AuthServer.Api
             builder.Services.AddDbContext<TourAndHotelDbContext>(options =>
             {
                 options.UseSqlServer(builder.Configuration.GetSection("ConnectionStrings:DiscoveryTours").Value);
-                
+
             });
 
             builder.Services.AddIdentity<ExtendedIdentityUser, IdentityRole>(options =>
@@ -35,7 +35,7 @@ namespace AuthServer.Api
                 options.Password.RequireUppercase = false;
                 options.Password.RequireLowercase = false;
                 options.Password.RequireDigit = false;
-            }).AddEntityFrameworkStores<AuthDemoDbContext>()
+            }).AddEntityFrameworkStores<UserDbContext>()
             .AddDefaultTokenProviders();
 
             builder.Services.AddAuthentication(options =>
@@ -64,13 +64,12 @@ namespace AuthServer.Api
                     policy.AllowAnyHeader();
                     policy.AllowAnyMethod();
                     policy.AllowAnyOrigin();
-                   
+
                 });
             });
-
+            builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddTransient<IAuthService, AuthService>();
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 

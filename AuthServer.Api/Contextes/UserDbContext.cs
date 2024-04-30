@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuthServer.Api.Contextes
 {
-    public class AuthDemoDbContext:IdentityDbContext
+    public class UserDbContext : IdentityDbContext<ExtendedIdentityUser>
     {
-        public AuthDemoDbContext(DbContextOptions<AuthDemoDbContext> options):base(options)
+        public UserDbContext(DbContextOptions<UserDbContext> options):base(options)
         {
             Database.EnsureCreated();
         }
