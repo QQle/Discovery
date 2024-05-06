@@ -26,7 +26,7 @@ namespace AuthServer.Api.Services
             var identityUser = new ExtendedIdentityUser
             {
                 UserName = user.UserName,
-                Email = user.UserEmail 
+                Email = user.UserEmail
             };
 
             var result = await _userManager.CreateAsync(identityUser, user.Password);
@@ -36,7 +36,7 @@ namespace AuthServer.Api.Services
         public async Task<LoginResponse> Login(LoginUser user)
         {
             var response = new LoginResponse();
-            var identityUser = await _userManager.FindByNameAsync(user.UserName);
+            var identityUser = await _userManager.FindByEmailAsync(user.UserEmail);
 
             if (identityUser is null || (await _userManager.CheckPasswordAsync(identityUser, user.Password)) == false)
             {
@@ -44,7 +44,7 @@ namespace AuthServer.Api.Services
             }
 
             response.IsLoggedIn = true;
-            response.JwtToken = this.GenerateTokenString(identityUser.UserName);
+            response.JwtToken = this.GenerateTokenString(identityUser.Email);
             response.RefreshToken = this.GenerateRefreshTokenString();
 
             identityUser.RefreshToken = response.RefreshToken;

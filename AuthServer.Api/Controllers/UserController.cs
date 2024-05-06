@@ -1,9 +1,11 @@
 ﻿using AuthServer.Api.Contextes;
 using AuthServer.Api.Models;
 using AuthServer.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace AuthServer.Api.Controllers
@@ -14,7 +16,6 @@ namespace AuthServer.Api.Controllers
     {
         private readonly IAuthService _authService;
         private readonly UserManager<ExtendedIdentityUser> _userManager;
-
         private readonly UserDbContext _context;
 
         public UserController(IAuthService authService, UserDbContext context, UserManager<ExtendedIdentityUser> userManager )
@@ -61,17 +62,17 @@ namespace AuthServer.Api.Controllers
             return Unauthorized();
         }
         [HttpPost("Logout")]
-        public async Task<IActionResult> Logout(string username)
+        public async Task<IActionResult> Logout(string userId)
         {
            
-            var currentUser = await _userManager.FindByNameAsync(username);
+            var currentUser = await _userManager.FindByIdAsync(userId);
             if (currentUser == null)
             {
                 return BadRequest("Пользователь не найден");
             }
 
             currentUser.RefreshToken = null;
-            currentUser.RefreshTokenExpiry = null;
+            currentUser.RefreshTokenExpiry = DateTime.MinValue;
 
             
             var updateResult = await _userManager.UpdateAsync(currentUser);
@@ -82,6 +83,20 @@ namespace AuthServer.Api.Controllers
 
             return Ok("Вы успешно вышли из системы");
         }
+
+        [HttpPost("RefreshToken")]
+        [Authorize]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenModel model)
+        {
+            var loginResult = await _authService.RefreshToken(model);
+            if (loginResult.IsLoggedIn)
+            {
+                return Ok(loginResult);
+            }
+            return Unauthorized();
+        }
+
+
 
     }
 }
