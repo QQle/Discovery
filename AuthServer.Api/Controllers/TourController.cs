@@ -90,7 +90,7 @@ namespace AuthServer.Api.Controllers
                     Images = _tourAndHotelDbContext.Images.Where(x => x.TourId == tour.Id).Select(img => new
                     {
                         Url = img.Path
-                    }).ToList(),
+                    }).First(),
                 };
 
                 result.Add(new { Tour = tourInfo, Hotels = hotelsInfo });
@@ -219,19 +219,49 @@ namespace AuthServer.Api.Controllers
             return Ok(result);
         }
 
-        public record HotelInfo(int HostelId);
+        public record HotelInformation(int[] HostelId);
         [HttpPost("HotelInfo")]
-        public async Task<IActionResult> HotelInformation([FromBody] HotelInfo info)
+        public async Task<IActionResult> HotelInfo([FromBody] HotelInformation info)
         {
-            var hotel = await _tourAndHotelDbContext.Hotels
-           .FirstOrDefaultAsync(h => h.Id == info.HostelId);
+            var hotelInfoList = new List<Object>();
 
-            if (hotel == null)
+          
+            var hotels = _tourAndHotelDbContext.Hotels.ToList();
+
+            foreach (var hostelId in info.HostelId)
+            {
+                var hotel = hotels.FirstOrDefault(h => h.Id == hostelId);
+                if (hotel != null)
+                {
+                    var hotelInfo = new
+                    {
+                        Id = hotel.Id,
+                        Name = hotel.Name,
+                        City = hotel.City,
+                        Type = hotel.Type,
+                        Description = hotel.Description,
+                        Star = hotel.Star,
+                        AllowChild = hotel.AllowChild,
+                        FreeWifi = hotel.FreeWifi,
+                        TypeOfNutrition = hotel.TypeOfNutrition,
+                        AvailablePerson = hotel.AvailablePerson,
+                        Images = _tourAndHotelDbContext.Images.Where(x => x.HotelId == hotel.Id).Select(img => new
+                        {
+                            Url = img.Path
+                        }).ToList(),
+                        TourHotels = hotel.TourHotels
+                    };
+
+                    hotelInfoList.Add(hotelInfo);
+                }
+            }
+
+            if (!hotelInfoList.Any())
             {
                 return NotFound();
             }
 
-            return Ok(hotel);
+            return Ok(hotelInfoList);
         }
 
         [HttpPost("SortByRating")]
