@@ -46,7 +46,6 @@ namespace AuthServer.Api.Services
             response.IsLoggedIn = true;
             response.JwtToken = this.GenerateTokenString(identityUser.Email);
             response.RefreshToken = this.GenerateRefreshTokenString();
-
             identityUser.RefreshToken = response.RefreshToken;
             identityUser.RefreshTokenExpiry = DateTime.Now.AddHours(12);
             await _userManager.UpdateAsync(identityUser);

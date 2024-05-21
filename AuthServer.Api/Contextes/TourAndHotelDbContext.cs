@@ -7,13 +7,11 @@ public class TourAndHotelDbContext : DbContext
     {
         Database.EnsureCreated();
     }
-
     public DbSet<Images> Images { get; set; }
     public DbSet<Hotel> Hotels { get; set; }
     public DbSet<Tour> Tours { get; set; }
     public DbSet<TourHotel> ToursWithHotels { get; set; }
     public DbSet<BookedTours> BookedTours { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Tour>()

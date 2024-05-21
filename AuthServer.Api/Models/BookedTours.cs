@@ -3,7 +3,6 @@
     public class BookedTours
     {
         public int Id { get; set; }
-        public ExtendedIdentityUser User { get; set; }
         public string UserId { get; set; }
         public int TourId { get; set; }
         public Tour Tour { get; set; }

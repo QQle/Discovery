@@ -1,5 +1,8 @@
 ﻿namespace AuthServer.Api.Models
 {
+    /// <summary>
+    /// Модель сущности "Тур".
+    /// </summary>
     public class Tour
     {
         public int? Id { get; set; }

@@ -45,7 +45,7 @@ namespace AuthServer.Api.Controllers
             }
             var loginResult = await _authService.Login(user);
             var currentUser = await _context.Users
-                .Where(x => x.UserName == user.UserName)
+                .Where(x => x.Email == user.UserEmail)
                 .Select(x => x.Id)
                 .FirstOrDefaultAsync();
 
@@ -62,6 +62,7 @@ namespace AuthServer.Api.Controllers
             return Unauthorized();
         }
         [HttpPost("Logout")]
+        [Authorize]
         public async Task<IActionResult> Logout(string userId)
         {
            
@@ -85,7 +86,7 @@ namespace AuthServer.Api.Controllers
         }
 
         [HttpPost("RefreshToken")]
-        [Authorize]
+      
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenModel model)
         {
             var loginResult = await _authService.RefreshToken(model);
