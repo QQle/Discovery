@@ -18,13 +18,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\Facebook.png" />
+    <None Remove="Resources\Instargram.jpg" />
     <None Remove="Resources\Logo.svg" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Resources\Logo.svg">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <None Remove="Resources\Logotype.ico" />
+    <None Remove="Resources\Twitter.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,6 +38,13 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="RazorLight" Version="2.3.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\Facebook.png" />
+    <Content Include="Resources\Instargram.jpg" />
+    <Content Include="Resources\Logotype.ico" />
+    <Content Include="Resources\Twitter.png" />
   </ItemGroup>
 
   <ItemGroup>

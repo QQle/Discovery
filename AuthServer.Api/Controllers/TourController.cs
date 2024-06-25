@@ -2,6 +2,7 @@
 using AuthServer.Api.Models;
 using AuthServer.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using RazorLight;
 using System.Globalization;
@@ -64,12 +65,13 @@ namespace AuthServer.Api.Controllers
                             break;
                     }
 
-                    var hotelPrice = basePrice * (1 + tourHotel.Hotel.Star / 10);
-                    availableSeats += tourHotel.Hotel.AvailablePerson;
+                    var hotelPrice = basePrice * (1 + tourHotel?.Hotel?.Star / 10);
+                    availableSeats += tourHotel?.Hotel?.AvailablePerson;
                     var hotelInfo = new
                     {
-                        Id = tourHotel.Hotel.Id,
-                        Name = tourHotel.Hotel.Name,
+                        Id = tourHotel?.Hotel?.Id,
+                        Name = tourHotel?.Hotel?.Name,
+                        Price = await GetTourPriceForHotelAsync((int)tour.Id,(int)tourHotel.Hotel.Id),
                      
                     };
                     hotelsInfo.Add(hotelInfo);
@@ -87,13 +89,16 @@ namespace AuthServer.Api.Controllers
                     Price = Math.Round(basePrice, 2),
                     AvailableSeats = availableSeats,
                     Discount = tour.Discount,
+                    Hotel = hotelsInfo,
                     Images = _tourAndHotelDbContext.Images.Where(x => x.TourId == tour.Id).Select(img => new
                     {
                         Url = img.Path
                     }).First(),
+                   
+                   
                 };
 
-                result.Add(new { Tour = tourInfo, Hotels = hotelsInfo });
+                result.Add(new {Tour = tourInfo});
             }
 
 
@@ -174,66 +179,101 @@ namespace AuthServer.Api.Controllers
             }
 
 
-            var result = await query
-                 .Select(t => new
-                 {
-                     Id = t.Id,
-                     Name = t.Name,
-                     Description = t.Description,
-                     Country = t.Country,
-                     DepartureDate = t.DepartureDate,
-                     ArrivalDate = t.ArrivalDate,
-                     Star = t.Star,
-                     Price = t.Price,
-                     AvailableSeats = t.AvailableSeats,
-                     Discount = t.Discount,
-                     Images = _tourAndHotelDbContext.Images.Where(x => x.TourId == t.Id).Select(img => new
-                     {
-                         Url = img.Path
-                     }).ToList(),
-                     Hotels = t.TourHotels.Select(th => new
-                     {
-                         Id = th.Hotel.Id,
-                         Name = th.Hotel.Name,
-                         City = th.Hotel.City,
-                         Type = th.Hotel.Type,
-                         Description = th.Hotel.Description,
-                         Star = th.Hotel.Star,
-                         AllowChild = th.Hotel.AllowChild,
-                         FreeWifi = th.Hotel.FreeWifi,
-                         TypeOfNutrition = th.Hotel.TypeOfNutrition,
-                         Images = _tourAndHotelDbContext.Images.Where(x => x.HotelId == th.Hotel.Id).Select(img => new
-                         {
-                             Url = img.Path
-                         }).ToList(),
-                     }).ToList()
+            var sortedResult = await query
+            .Include(t => t.TourHotels).ThenInclude(th => th.Hotel)
+       .Include(t => t.Images)
+       .Select(t => new
+       {
+           Id = t.Id,
+           Name = t.Name,
+           Description = t.Description,
+           Country = t.Country,
+           DepartureDate = t.DepartureDate,
+           ArrivalDate = t.ArrivalDate,
+           Star = t.Star,
+           Price = t.Price,
+           AvailableSeats = t.AvailableSeats,
+           Discount = t.Discount,
+           Images = _tourAndHotelDbContext.Images
+                       .Where(x => x.TourId == t.Id)
+                       .Select(img => new
+                       {
+                           Url = img.Path
+                       })
+                       .FirstOrDefault(),
+           Hotels = t.TourHotels.Select(th => new
+           {
+               Id = th.Hotel.Id,
+               Name = th.Hotel.Name,
+               
+           }).ToList()
+       })
+       .ToListAsync();
 
-                 })
-               .ToListAsync();
-
-            if (result == null)
+            if (sortedResult == null || sortedResult.Count == 0)
             {
-                return NotFound("К сожалению по вашим параметрам ничего не найдено");
+                return NotFound("К сожалению, по вашим параметрам ничего не найдено");
+            }
+
+            var result = new List<object>();
+
+            foreach (var tour in sortedResult)
+            {
+                var hotelsInfo = new List<object>();
+                foreach (var tourHotel in tour.Hotels)
+                {
+                    var hotelInfo = new
+                    {
+                        Id = tourHotel.Id,
+                        Name = tourHotel.Name,
+                        
+                    };
+                    hotelsInfo.Add(hotelInfo);
+                }
+
+                var tourInfo = new
+                {
+                    Id = tour.Id,
+                    Name = tour.Name,
+                    Description = tour.Description,
+                    Country = tour.Country,
+                    DepartureDate = tour.DepartureDate,
+                    ArrivalDate = tour.ArrivalDate,
+                    Star = tour.Star,
+                    Price = tour.Price != null ? Math.Round((decimal)tour.Price, 2) : (decimal?)null,
+                    AvailableSeats = tour.AvailableSeats,
+                    Discount = tour.Discount,
+                    Hotel = hotelsInfo,
+                    Images = tour.Images
+                };
+
+                result.Add(new { Tour = tourInfo });
             }
 
             return Ok(result);
         }
+    
 
         public record HotelInformation(int[] HostelId);
         [HttpPost("HotelInfo")]
         public async Task<IActionResult> HotelInfo([FromBody] HotelInformation info)
         {
             var hotelInfoList = new List<Object>();
-
-          
             var hotels = _tourAndHotelDbContext.Hotels.ToList();
+            var tourId = await _tourAndHotelDbContext.ToursWithHotels
+                .Where(h => h.HotelId == info.HostelId[0])
+                .Select(t => t.TourId)
+                .FirstOrDefaultAsync();
+
+           
 
             foreach (var hostelId in info.HostelId)
             {
-                var hotel = hotels.FirstOrDefault(h => h.Id == hostelId);
+                var hotel =  hotels.FirstOrDefault(h => h.Id == hostelId);
+                var hotelPrice = await GetTourPriceForHotelAsync(tourId, (int)hotel.Id);
                 if (hotel != null)
                 {
-                    var hotelInfo = new
+                    var hotelInfo =  new
                     {
                         Id = hotel.Id,
                         Name = hotel.Name,
@@ -245,11 +285,12 @@ namespace AuthServer.Api.Controllers
                         FreeWifi = hotel.FreeWifi,
                         TypeOfNutrition = hotel.TypeOfNutrition,
                         AvailablePerson = hotel.AvailablePerson,
+                        Price = hotelPrice,
                         Images = _tourAndHotelDbContext.Images.Where(x => x.HotelId == hotel.Id).Select(img => new
                         {
                             Url = img.Path
                         }).ToList(),
-                        TourHotels = hotel.TourHotels
+                        
                     };
 
                     hotelInfoList.Add(hotelInfo);
@@ -312,7 +353,7 @@ namespace AuthServer.Api.Controllers
                 return BadRequest("Введенное количество персон превышает количество доступных мест в отеле");
             }
 
-            double totalPrice = await GetTourPriceForHotelAsync((int)tour.Id, selectedHotel.HotelId) * bookingRequest.Persons;
+            double totalPrice = (await GetTourPriceForHotelAsync((int)tour.Id, selectedHotel.HotelId)) * bookingRequest.Persons;
 
             selectedHotel.Hotel.AvailablePerson -= bookingRequest.Persons;
 
@@ -349,13 +390,7 @@ namespace AuthServer.Api.Controllers
                 .Include(h => h.Images)
                 .ToListAsync();
 
-            string logoImagePath = @"D:\OneDrive\Рабочий стол\Новая папка\003-RefreshToken\AuthServer.Api\Resources\Logo.svg";
-
-
-            byte[] imageBytes = System.IO.File.ReadAllBytes(logoImagePath);
-
-           
-            string base64String = Convert.ToBase64String(imageBytes);
+          
 
             if (hotel != null && selectedHotel != null)
             {
@@ -384,7 +419,7 @@ namespace AuthServer.Api.Controllers
 
                     HotelName = selectedHotel.Hotel.Name,
                     HotelDescription = selectedHotel.Hotel.Description,
-                    LogoBase64 = "data:image/svg+xml;base64," + base64String
+                   
 
                 };
 
@@ -418,7 +453,7 @@ namespace AuthServer.Api.Controllers
 
             }
 
-            return Ok($"Тур успешно забронирован для {bookingRequest.Persons} человек. Итоговая стоимость: {totalPrice}");
+            return Ok($"Тур успешно забронирован для {bookingRequest.Persons} человек. Итоговая стоимость с учетом выбранного отеля: {totalPrice}");
         }
 
 
